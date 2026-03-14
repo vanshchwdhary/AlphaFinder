@@ -1,21 +1,26 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 import streamlit as st
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
+from stock_scout.analysis.signals import generate_signals
 from stock_scout.analysis.features import add_features
 from stock_scout.analysis.indicators import add_indicators
 from stock_scout.config import Settings
+from stock_scout.db.engine import get_engine, session_scope
+from stock_scout.db.models import Base
+from stock_scout.ingest import ingest_fundamentals, ingest_prices
+from stock_scout.universe import load_universe_csv
 
 st.set_page_config(page_title="Stock Scout (NSE/BSE)", layout="wide")
 
 
 @st.cache_resource
 def _engine(db_url: str):
-    return create_engine(db_url, future=True)
+    return get_engine(db_url)
 
 
 @st.cache_data(ttl=60)
@@ -76,6 +81,18 @@ def load_price_history(db_url: str, equity_id: int, limit: int = 260) -> pd.Data
     return df
 
 
+def bootstrap_data(settings: Settings, *, drop_days: int, horizon_days: int) -> None:
+    engine = get_engine(settings.database_url)
+    Base.metadata.create_all(bind=engine)
+    universe = load_universe_csv(settings.universe_path)
+    start = date.today() - timedelta(days=365 * 3)
+
+    with session_scope(settings.database_url) as session:
+        ingest_prices(session, settings, universe, start=start, end=None)
+        ingest_fundamentals(session, settings, universe)
+        generate_signals(session, settings, drop_period_days=drop_days, horizon_days=horizon_days)
+
+
 def main() -> None:
     settings = Settings()
 
@@ -92,11 +109,21 @@ def main() -> None:
             options=["Potential Buy", "Watchlist", "Avoid"],
             default=["Potential Buy", "Watchlist"],
         )
+        if st.button("Refresh data now", type="primary"):
+            with st.spinner("Fetching prices + fundamentals and generating signals..."):
+                bootstrap_data(settings, drop_days=drop_days, horizon_days=horizon_days)
+            st.cache_data.clear()
+            st.rerun()
 
     signals = load_signal_table(settings.database_url, drop_days=drop_days, horizon_days=horizon_days)
     if signals.empty:
-        st.warning("No signals found. Run `stock-scout generate-signals` first.")
-        return
+        st.warning("No signals found in the database yet.")
+        if st.button("Bootstrap database (download data + generate signals)"):
+            with st.spinner("Bootstrapping (first run can take a minute)..."):
+                bootstrap_data(settings, drop_days=drop_days, horizon_days=horizon_days)
+            st.cache_data.clear()
+            st.rerun()
+        st.stop()
 
     filt = (signals["total_score"] >= float(min_score)) & (signals["label"].isin(labels))
     view = signals.loc[filt].copy()
@@ -119,7 +146,7 @@ def main() -> None:
                 "rationale",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -157,4 +184,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

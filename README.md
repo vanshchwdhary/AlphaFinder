@@ -48,3 +48,5 @@ streamlit run src/stock_scout/dashboard/streamlit_app.py
   - `stock-scout ingest-fundamentals`
   - `stock-scout generate-signals`
   - `stock-scout predict` (optional)
+
+For “deploy from GitHub” instructions, see `docs/DEPLOYMENT.md`.
