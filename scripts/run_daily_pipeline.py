@@ -5,7 +5,8 @@ from pathlib import Path
 
 from stock_scout.analysis.signals import generate_signals
 from stock_scout.config import Settings
-from stock_scout.db.engine import session_scope
+from stock_scout.db.engine import get_engine, session_scope
+from stock_scout.db.models import Base
 from stock_scout.ingest import ingest_fundamentals, ingest_prices
 from stock_scout.logging import configure_logging
 from stock_scout.universe import load_universe_csv
@@ -14,6 +15,8 @@ from stock_scout.universe import load_universe_csv
 def main() -> None:
     configure_logging(level=logging.INFO)
     settings = Settings()
+    engine = get_engine(settings.database_url)
+    Base.metadata.create_all(bind=engine)
     universe = load_universe_csv(settings.universe_path)
 
     with session_scope(settings.database_url) as session:
@@ -40,4 +43,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
