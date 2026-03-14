@@ -1,0 +1,21 @@
+.venv/
+.venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+dist/
+build/
+*.egg-info/
+
+# local db / artifacts
+*.db
+artifacts/
+
+# env
+.env
+
+# OS
+.DS_Store

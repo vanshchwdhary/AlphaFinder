@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stock-scout"
+version = "0.1.0"
+description = "Indian stock market dip finder and analyzer (NSE/BSE)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26.4",
+  "pandas>=2.2.2",
+  "pydantic-settings>=2.3.1",
+  "python-dotenv>=1.0.1",
+  "requests>=2.32.3",
+  "rich>=13.7.1",
+  "sqlalchemy>=2.0.31",
+  "tenacity>=8.3.0",
+  "typer>=0.12.3",
+  "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+ai = [
+  "joblib>=1.4.2",
+  "scikit-learn>=1.5.1",
+]
+dashboard = [
+  "plotly>=5.22.0",
+  "streamlit>=1.36.0",
+]
+alerts = [
+  "httpx>=0.27.0",
+]
+dev = [
+  "pytest>=8.2.2",
+  "ruff>=0.5.6",
+]
+
+[project.scripts]
+stock-scout = "stock_scout.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stock_scout"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
